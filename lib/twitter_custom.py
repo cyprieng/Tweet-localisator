@@ -1,3 +1,5 @@
+import os
+
 from twitter import *
 
 
@@ -8,10 +10,10 @@ class TwitterCustom(object):
     def __init__(self):
         """Init the twitter API with the credentials.
         """
-        consumer_key = 'xxxxxxxxx'
-        consumer_secret = 'xxxxxxxxx'
-        access_token = 'xxxxxxxxx'
-        access_token_secret = 'xxxxxxxxx'
+        consumer_key = os.environ['TWITTER_CONSUMER_KEY']
+        consumer_secret = os.environ['TWITTER_CONSUMER_SECRET']
+        access_token = os.environ['TWITTER_TOKEN']
+        access_token_secret = os.environ['TWITTER_TOKEN_SECRET']
 
         self.api = Twitter(auth=OAuth(access_token, access_token_secret, consumer_key, consumer_secret))
 

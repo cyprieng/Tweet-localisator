@@ -7,7 +7,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 from matplotlib.path import Path
 
-from tweet_locator import TwitterCustom
+from twitter_custom import TwitterCustom
 
 
 logging.basicConfig()
@@ -39,7 +39,7 @@ def find_word(w, s):
     Returns:
         Match occurence (cf re module)
     """
-    return re.compile(r'\b({0})\b'.format(w), flags=re.IGNORECASE).search(s)
+    return re.compile(ur'\b({0})\b'.format(w), flags=re.IGNORECASE).search(s)
 
 
 def get_geoname_area(locations):
@@ -63,9 +63,9 @@ def get_geoname_area(locations):
     index_list = []
     index_sf = 0
     for record in sf.iterRecords():
-        if any([find_word(location.lower())(get_name_record(record).lower()) is not None for location in locations]):
+        if any([find_word(location.lower(), get_name_record(record).lower()) is not None for location in locations]):
             index_list.append(index_sf)
-            logger.info(u'Get a match with {0}'.format(get_name_record(record)))
+            logger.info(u'Get a match with {0}'.format(get_name_record(record).decode('utf-8')))
         index_sf += 1
 
     return [sf.shape(i).points for i in index_list]
@@ -211,53 +211,3 @@ def determinate_tweet_location(tweet_id):
 
     x, y, z = aggregate_polys(polys)
     return get_max_poly(x, y, z)
-
-
-def generate_map(poly):
-    """Generate a Gmaps showing the given poly.
-
-    Args:
-        poly: the polygone to show.
-
-    Returns:
-        HTML string of the Gmaps.
-    """
-    poly_html = ''
-
-    for point in poly:
-        poly_html += '{{lat: {0}, lng: {1}}},\n'.format(point[1], point[0])
-
-    html = '''
-    <div id="map"></div>
-    <script>
-        function initMap() {
-          var map = new google.maps.Map(document.getElementById('map'), {
-            zoom: 5,
-            center: {lat: 24.886, lng: -70.268},
-            mapTypeId: google.maps.MapTypeId.TERRAIN
-          });
-
-          // Define the LatLng coordinates for the polygon's path.
-          var polyCoords = [
-              ''' + poly_html + '''
-          ];
-
-          // Construct the polygon.
-          var poly = new google.maps.Polygon({
-            paths: polyCoords,
-            strokeColor: '#FF0000',
-            strokeOpacity: 0.8,
-            strokeWeight: 2,
-            fillColor: '#FF0000',
-            fillOpacity: 0.35
-          });
-          poly.setMap(map);
-        }
-
-    </script>
-    <script async defer
-        src="https://maps.googleapis.com/maps/api/js?key=xxxxxxxxx&signed_in=true&callback=initMap"></script>
-  </body>
-</html>
-'''
-    return html

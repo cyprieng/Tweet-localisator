@@ -1,5 +1,6 @@
 import logging
 import re
+import requests
 import shapefile
 import string
 
@@ -13,20 +14,6 @@ from twitter_custom import TwitterCustom
 logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-
-
-def get_name_record(record):
-    """Get the location name of a shapefile record
-
-    Args:
-        record: record from a shapefile
-
-    Returns:
-        A location string
-    """
-    for i in [52, 42, 30, 18, 6, 4]:
-        if len(str(record[i].strip())) == len(str(record[i])):
-            return record[i]
 
 
 def find_word(w, s):
@@ -58,17 +45,13 @@ def get_geoname_area(locations):
 
     logger.info(u'Searching polys for {0}'.format(locations))
 
-    sf = shapefile.Reader("data/geoname/gadm28")
+    polys = []
 
-    index_list = []
-    index_sf = 0
-    for record in sf.iterRecords():
-        if any([find_word(location.lower(), get_name_record(record).lower()) is not None for location in locations]):
-            index_list.append(index_sf)
-            logger.info(u'Get a match with {0}'.format(get_name_record(record).decode('utf-8')))
-        index_sf += 1
+    for loc in locations:
+        data = requests.get(u'https://nominatim.openstreetmap.org/search/{0}?format=json&limit=10&polygon=1'.format(loc)).json()
+        polys += [d['polygonpoints'] for d in data if 'polygonpoints' in d.keys()]
 
-    return [sf.shape(i).points for i in index_list]
+    return polys
 
 
 def get_time_zone_area(time_zone):

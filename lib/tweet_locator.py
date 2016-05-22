@@ -49,7 +49,7 @@ def get_geoname_area(locations):
 
     for loc in locations:
         data = requests.get(u'https://nominatim.openstreetmap.org/search/{0}?format=json&limit=10&polygon=1'.format(loc)).json()
-        polys += [d['polygonpoints'] for d in data if 'polygonpoints' in d.keys()]
+        polys += [[[float(point[0]), float(point[1])] for point in d['polygonpoints']] for d in data if 'polygonpoints' in d.keys()]
 
     return polys
 

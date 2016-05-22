@@ -1,4 +1,4 @@
-# Tweet-localisator
+# Tweet locator
 
 ## Environment variables
 

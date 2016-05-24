@@ -40,4 +40,4 @@ def load_map(tweet_id):
 
 
 if __name__ == "__main__":
-     socketio.run(app,  port=sys.argv[1])
+     socketio.run(app,  port=int(sys.argv[1]))

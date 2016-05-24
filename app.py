@@ -1,4 +1,5 @@
 import os
+import sys
 
 from flask import Flask
 from flask import render_template
@@ -39,4 +40,4 @@ def load_map(tweet_id):
 
 
 if __name__ == "__main__":
-     socketio.run(app)
+     socketio.run(app,  port=sys.argv[1])

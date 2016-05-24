@@ -4,5 +4,5 @@ twitter>=1.17.1
 flask>=0.10.1
 requests>=2.10.0
 flask-socketio>=2.3
-gunicorn
+gunicorn==18.0
 gevent

@@ -40,5 +40,5 @@ def load_map(tweet_id):
 
 
 if __name__ == "__main__":
-    logger.info(u'Starting server on port: {0}'.format(int(sys.argv[1])))
+    log.info(u'Starting server on port: {0}'.format(int(sys.argv[1])))
     socketio.run(app,  port=int(sys.argv[1]))

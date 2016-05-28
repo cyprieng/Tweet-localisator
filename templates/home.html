@@ -6,61 +6,11 @@
 </div>
 
 
-<form>
+<form method="post" action="{{ url_for('map') }}">
   <div class="form-group">
     <label for="tweetId">Tweet ID</label>
     <input type="text" class="form-control" id="tweetId" name="tweetId" placeholder="Tweet ID">
   </div>
   <button type="submit" class="btn btn-default">Submit</button>
 </form>
-
-<script>
-var polys;
-
-function initMap() {
-  var map = new google.maps.Map(document.getElementById("map"), {
-    zoom: 5,
-    center: {lat: 24.886, lng: -70.268},
-    mapTypeId: google.maps.MapTypeId.TERRAIN
-  });
-
-  // Define the LatLng coordinates for the polygon\'s path.
-  var polyCoords = [];
-
-  for (var index = 0; index < polys.length; ++index) {
-    polyCoords.push({lat: polys[index][1], lng: polys[index][0]});
-  }
-
-  // Construct the polygon.
-  var poly = new google.maps.Polygon({
-    paths: polyCoords,
-    strokeColor: "#FF0000",
-    strokeOpacity: 0.8,
-    strokeWeight: 2,
-    fillColor: "#FF0000",
-    fillOpacity: 0.35
-  });
-  poly.setMap(map);
-}
-
-
-$(document).ready(function(){
-    var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + '/');
-
-    $('form').submit(function(){
-      socket.emit('load map', $('#tweetId').val());
-      return false;
-    });
-
-    socket.on('response', function(msg){
-      console.log(msg);
-    });
-
-    socket.on('map ready', function(data) {
-      polys = data.poly
-      $('#container').append('<div id="map"></div>');
-      $.getScript("https://maps.googleapis.com/maps/api/js?key="+ data.maps_key +"&signed_in=true&callback=initMap");
-    });
-});
-</script>
 {% endblock %}

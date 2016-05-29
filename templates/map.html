@@ -26,6 +26,14 @@
           fillOpacity: 0.35
         });
         poly.setMap(map);
+
+        // Center on poly
+        var bounds = new google.maps.LatLngBounds();
+        var points = poly.getPath().getArray();
+        for (var n = 0; n < points.length ; n++){
+          bounds.extend(points[n]);
+        }
+        map.fitBounds(bounds);
       }
   </script>
 

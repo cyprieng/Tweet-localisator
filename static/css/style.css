@@ -45,3 +45,14 @@ html, body {
   position: absolute;
   left: 0;
 }
+
+#tweet-info{
+  margin-top: 20px;
+}
+
+.color-sample{
+  display: inline-block;
+  height: 10px;
+  width: 20px;
+  cursor: pointer;
+}

@@ -20,8 +20,8 @@ def map():
     """Get the map for the given tweet"""
     if request.form['tweetId']:
         tweet_id = request.form['tweetId']
-        poly = determinate_tweet_location(tweet_id)
-        return render_template('map.html', poly=poly, maps_key=os.environ['GOOGLE_MAPS_KEY'])
+        polys = determinate_tweet_location(tweet_id)
+        return render_template('map.html', polys=polys, maps_key=os.environ['GOOGLE_MAPS_KEY'])
 
 if __name__ == "__main__":
     app.run()

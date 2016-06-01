@@ -7,6 +7,7 @@ import string
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 from matplotlib.path import Path
+from nltk.tag import pos_tag
 
 from twitter_custom import TwitterCustom
 
@@ -36,20 +37,25 @@ def get_geoname_area(locations):
         locations: list of location string
 
     Returns:
-        A list of polygones
+        A list of polygons
     """
     # Filter locations (more than 3 letters) and remove punctuation
     exclude = set(string.punctuation)
     locations_2 = [''.join(ch for ch in l if ch not in exclude) for l in locations]
     locations = [l for l in locations_2 if len(l) > 3]
 
+    # Get only proper nouns
+    tagged_sent = pos_tag(locations)
+    locations = [word for word,pos in tagged_sent if pos == 'NNP']
+
     logger.info(u'Searching polys for {0}'.format(locations))
 
     polys = []
 
     for loc in locations:
-        data = requests.get(u'https://nominatim.openstreetmap.org/search/{0}?format=json&limit=10&polygon=1'.format(loc)).json()
-        polys += [[[float(point[0]), float(point[1])] for point in d['polygonpoints']] for d in data if 'polygonpoints' in d.keys()]
+        data = requests.get(u'https://nominatim.openstreetmap.org/search/{0}?format=json&limit=10&polygon=1&addressdetails=1'.format(loc)).json()
+        logger.info(u'Matched {0} with {1}'.format(loc, [d['display_name'] for d in data]))
+        polys += [[[float(point[0]), float(point[1]), float(d['importance'])] for point in d['polygonpoints']] for d in data if 'polygonpoints' in d.keys()]
 
     return polys
 
@@ -61,7 +67,7 @@ def get_time_zone_area(time_zone):
         time_zone: time_zone to find
 
     Returns:
-        A polygone
+        A polygon
     """
     tz = shapefile.Reader("data/tz/tz_world_mp")
     records = tz.records()
@@ -81,84 +87,71 @@ def add_z(poly, z):
     """Add a dimension in the given poly with the given value.
 
     Args:
-        poly: polygone to modify.
+        poly: polygon to modify.
         z: value of the new dimension.
 
     Returns:
-        Polygone with a new dimension.
+        Polygon with a new dimension.
     """
     for p in poly:
-        p.append(z)
+        if len(p) == 2:
+            p.append(z)
+        else:
+            p[2] += z
     return poly
 
 
-def aggregate_polys(polygones):
-    """Aggregates the given 3D polygones.
+def accumulate_polys(polygons):
+    """Accumulate polys. For each intersecting polys, addition the z.
 
     Args:
-        polygones: list of polygones.
+        polygons: list of polygons.
 
     Returns:
-        A list of x, y, z
+        A list of polygons.
     """
     # Make path
-    paths = [Path([[p[0], p[1]] for p in poly]) for poly in polygones]
+    paths = [Path([[p[0], p[1]] for p in poly]) for poly in polygons]
 
-    x = []
-    y = []
-    z = []
-    for poly in polygones:
+    poly_agg = []
+    for poly in polygons:
+        temp_poly = []
+
         for point in poly:
-            x.append(point[0])
-            y.append(point[1])
             z_temp = point[2]
 
             # Cumulate z for intersecting poly
-            for i in range(0, len(polygones) - 1):
-                if not polygones[i] == poly:
+            for i in range(0, len(polygons) - 1):
+                if not polygons[i] == poly:
                     if paths[i].contains_point([point[0], point[1]]):
-                        z_temp += polygones[i][0][2]
+                        z_temp += polygons[i][0][2]
 
-            z.append(z_temp)
+            temp_poly.append([point[0], point[1], z_temp])
 
-    return x, y, z
+        poly_agg.append(temp_poly)
 
-
-def make_graph(x, y, z):
-    """Show a graph for the given coordinates.
-
-    Args:
-        x: x coordinates.
-        y: y coordinates.
-        z: z coordinates.
-    """
-    fig = plt.figure()
-    ax = Axes3D(fig)
-
-    ax.plot_trisurf(x, y, z)
-
-    ax.set_xlim3d(min(x), max(x))
-    ax.set_ylim3d(min(y), max(y))
-    ax.set_zlim3d(min(z), max(z))
-    plt.show()
+    return poly_agg
 
 
-def get_max_poly(x, y, z):
-    """Extract the poly with the bigger z.
+def get_max_poly(polys):
+    """Get the polys with the highter z.
 
     Args:
-        x: x coordinates.
-        y: y coordinates.
-        z: z coordinates.
+        polys: list of polygons.
 
     Returns:
-        A polygone
+        A list of polygons with the highter z.
     """
     max_poly = []
-    z_max = max(z)
-    for i in range(0, len(z) - 1):
-        if z[i] == z_max:
-            max_poly.append([x[i], y[i]])
+    z_max = max([max([point[2] for point in poly]) for poly in polys])
+    logger.info(u'Maximum z: {0}'.format(z_max))
+    for poly in polys:
+        max_poly_temp = []
+        for point in poly:
+            if point[2] == z_max:
+                max_poly_temp.append(point)
+        if max_poly_temp:
+            max_poly.append(max_poly_temp)
     return max_poly
 
 
@@ -169,7 +162,7 @@ def determinate_tweet_location(tweet_id):
         tweet_id: Id of the tweet to analyse.
 
     Returns:
-        A polygone representing the most probable location.
+        A polygon representing the most probable location.
     """
     t = TwitterCustom()
     tweet = t.get_tweet(tweet_id)
@@ -192,5 +185,5 @@ def determinate_tweet_location(tweet_id):
         for p in poly:
             polys.append(add_z(p, 3))
 
-    x, y, z = aggregate_polys(polys)
-    return get_max_poly(x, y, z)
+    polys_agg = accumulate_polys(polys)
+    return get_max_poly(polys_agg)

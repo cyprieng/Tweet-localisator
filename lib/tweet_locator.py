@@ -1,9 +1,11 @@
+import csv
 import logging
 import re
 import requests
 import shapefile
 import string
 
+from langid.langid import LanguageIdentifier, model
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 from matplotlib.path import Path
@@ -15,6 +17,26 @@ from twitter_custom import TwitterCustom
 logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+
+def get_polys_from_osm(osm_data):
+    """Get polygons from Open Street Map data.
+
+    Args:
+        osm_data: Open Street Map data
+
+    Returns:
+        List of polygons
+    """
+    polys = []
+    if osm_data and osm_data[0]['geojson']['type'] != 'Point':
+        for p in osm_data[0]['geojson']['coordinates']:
+            if isinstance(p[0][0], list):
+                for p2 in p:
+                    polys.append([[float(point[0]), float(point[1]), float(osm_data[0]['importance'])] for point in p2])
+            else:
+                polys.append([[float(point[0]), float(point[1]), float(osm_data[0]['importance'])] for point in p])
+    return polys
 
 
 def get_geoname_area(locations):
@@ -40,9 +62,9 @@ def get_geoname_area(locations):
     polys = []
 
     for loc in locations:
-        data = requests.get(u'https://nominatim.openstreetmap.org/search/{0}?format=json&limit=10&polygon=1&addressdetails=1'.format(loc)).json()
+        data = requests.get(u'https://nominatim.openstreetmap.org/search/{0}?format=json&limit=10&polygon_geojson=1&addressdetails=1'.format(loc)).json()
         logger.info(u'Matched {0} with {1}'.format(loc, [d['display_name'] for d in data]))
-        polys += [[[float(point[0]), float(point[1]), float(d['importance'])] for point in d['polygonpoints']] for d in data if 'polygonpoints' in d.keys()]
+        polys += get_polys_from_osm(data)
 
     return polys
 
@@ -68,6 +90,59 @@ def get_time_zone_area(time_zone):
     logger.warning(u'Timezone: {0} not found'.format(time_zone))
 
     return []
+
+
+def get_country_by_language(text):
+    """Get the country which speak the language of the given text.
+
+    Args:
+        text: the text.
+
+    Returns:
+        A list of country
+    """
+    identifier = LanguageIdentifier.from_modelstring(model, norm_probs=True)
+    lang = identifier.classify(text)[0]
+
+    countries_matching = []
+    with open('./data/country.csv', 'rb') as csvfile:
+        countries = csv.reader(csvfile, delimiter=';', quotechar='|')
+        for country in countries:
+            if lang in country[51].replace(' ', '').split(','):
+                countries_matching.append(country[4].strip())
+
+    logger.info(u'Matched text with countries: {0}'.format(countries_matching))
+    return countries_matching
+
+
+def get_country_polygons(country):
+    """Get the polygons of the given country.
+
+    Args:
+        country: name of the country.
+
+    Returns:
+        A list of polygons.
+    """
+    logger.info(u'Searching poly for country: {0}'.format(country))
+    data = requests.get(u'https://nominatim.openstreetmap.org/search/{0}?format=json&limit=1&polygon_geojson=1'.format(country)).json()
+    return get_polys_from_osm(data)
+
+
+def get_polys_from_language(text):
+    """Get the polys for the given text by taking into account the language.
+
+    Args:
+        text: the text.
+
+    Returns:
+        A list of polygons.
+    """
+    polys = []
+    countries = get_country_by_language(text)
+    for country in countries:
+        polys += get_country_polygons(country)
+    return polys
 
 
 def add_z(poly, z):
@@ -171,6 +246,12 @@ def determinate_tweet_location(tweet_id):
     if poly:
         for p in poly:
             polys.append(add_z(p, 3))
+
+    # Get area by language
+    poly = get_polys_from_language(tweet['text'] + tweet['user']['description'])
+    if poly:
+        for p in poly:
+            polys.append(add_z(p, 1))
 
     polys_agg = accumulate_polys(polys)
     return get_max_poly(polys_agg)

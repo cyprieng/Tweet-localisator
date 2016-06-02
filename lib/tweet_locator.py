@@ -17,19 +17,6 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def find_word(w, s):
-    """Search a word in a string
-
-    Args:
-        w: word to search
-        s: string where the word is searched
-
-    Returns:
-        Match occurence (cf re module)
-    """
-    return re.compile(ur'\b({0})\b'.format(w), flags=re.IGNORECASE).search(s)
-
-
 def get_geoname_area(locations):
     """Get a list of poly (describing a geographic location) matching the given locations.
 

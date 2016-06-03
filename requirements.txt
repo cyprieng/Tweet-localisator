@@ -1,8 +1,8 @@
 pyshp>=1.2.3
-matplotlib>=1.5.1
 twitter>=1.17.1
 flask>=0.10.1
 requests>=2.10.0
 nltk>=3.2.1
 langid>=1.1.6
+shapely>=1.5.16
 gunicorn

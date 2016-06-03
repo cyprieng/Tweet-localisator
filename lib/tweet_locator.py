@@ -1,18 +1,17 @@
 import csv
 import logging
+import math
+from multiprocessing.pool import ThreadPool
 import re
 import requests
 import shapefile
 import string
 
 from langid.langid import LanguageIdentifier, model
-from mpl_toolkits.mplot3d import Axes3D
-import matplotlib.pyplot as plt
-from matplotlib.path import Path
 from nltk.tag import pos_tag
+from shapely.geometry import Point, Polygon
 
 from twitter_custom import TwitterCustom
-
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -29,7 +28,7 @@ def get_polys_from_osm(osm_data):
         List of polygons
     """
     polys = []
-    if osm_data and osm_data[0]['geojson']['type'] != 'Point':
+    if osm_data and 'polygon' in osm_data[0]['geojson']['type'].lower():
         for p in osm_data[0]['geojson']['coordinates']:
             if isinstance(p[0][0], list):
                 for p2 in p:
@@ -140,8 +139,13 @@ def get_polys_from_language(text):
     """
     polys = []
     countries = get_country_by_language(text)
+    pool = ThreadPool(processes=len(countries))
+    results = []
     for country in countries:
-        polys += get_country_polygons(country)
+        results.append(pool.apply_async(get_country_polygons, (country, )))
+
+    for r in results:
+        polys += r.get()
     return polys
 
 
@@ -172,25 +176,53 @@ def accumulate_polys(polygons):
     Returns:
         A list of polygons.
     """
-    # Make path
-    paths = [Path([[p[0], p[1]] for p in poly]) for poly in polygons]
-
     poly_agg = []
+
+    # Check which polygon we need to check with which poly
+    poly_box = []
+    for poly in polygons:
+        poly_box.append({
+            'max_x': max([point[0] for point in poly]),
+            'min_x': min([point[0] for point in poly]),
+            'max_y': max([point[1] for point in poly]),
+            'min_y': min([point[1] for point in poly])
+        })
+
+    poly_to_check = []
+    i = 0
+    for poly in polygons:
+        logger.info(u'Checking intersecting poly with poly: {0}/{1}'.format(i, len(polygons)))
+        poly_to_check_temp = []
+        for j in range(0, len(polygons)):
+            if poly != polygons[j] and (not ((poly_box[i]['min_x'] > poly_box[j]['max_x']) or (poly_box[j]['min_x'] > poly_box[i]['max_x']))) and (not ((poly_box[i]['min_y'] > poly_box[j]['max_y']) or (poly_box[j]['min_y'] > poly_box[i]['max_y']))):
+                poly_to_check_temp.append(j)
+        poly_to_check.append(poly_to_check_temp)
+        i += 1
+
+    # Reduce poly precision
+    for i in range(0, len(polygons)):
+        polygons[i] = [p for j, p in enumerate(polygons[i]) if j % math.ceil(float(len(polygons[i])) / 100.) == 0]
+
+    index = 0
     for poly in polygons:
         temp_poly = []
+        logger.info(u'Accumulate poly: {0} with {1} polys'.format(index, len(poly_to_check[index])))
 
-        for point in poly:
-            z_temp = point[2]
+        if poly_to_check[index]:
+            for point in poly:
+                z_temp = point[2]
 
-            # Cumulate z for intersecting poly
-            for i in range(0, len(polygons) - 1):
-                if not polygons[i] == poly:
-                    if paths[i].contains_point([point[0], point[1]]):
+                # Cumulate z for intersecting poly
+                for i in poly_to_check[index]:
+                    if Point(point[0], point[1]).within(Polygon(polygons[i])):
                         z_temp += polygons[i][0][2]
 
-            temp_poly.append([point[0], point[1], z_temp])
+                temp_poly.append([point[0], point[1], z_temp])
+            poly_agg.append(temp_poly)
+        else:
+            poly_agg.append(poly)
 
-        poly_agg.append(temp_poly)
+        index += 1
 
     return poly_agg
 

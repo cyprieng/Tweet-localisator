@@ -4,6 +4,7 @@ import math
 from multiprocessing.pool import ThreadPool
 import requests
 import shapefile
+import urllib
 
 from langid.langid import LanguageIdentifier, model
 from shapely.geometry import Point
@@ -55,14 +56,14 @@ def get_geoname_area(locations):
     Returns:
         A list of polygons
     """
-    locations = [loc.replace('#', '') for loc in locations if loc.replace('#', '')[0].isupper()]
+    locations = [loc.replace('#', '').replace('?', '') for loc in locations if loc.replace('#', '')[0].isupper()]
 
     logger.info(u'Searching polys for {0}'.format(locations))
 
     polys = []
 
     for loc in locations:
-        data = requests.get(u'https://nominatim.openstreetmap.org/search/{0}?format=json&limit=10&polygon_geojson=1&addressdetails=1'.format(loc)).json()
+        data = requests.get(u'https://nominatim.openstreetmap.org/search/{0}?format=json&limit=10&polygon_geojson=1&addressdetails=1'.format(urllib.quote_plus(loc))).json()
         logger.info(u'Matched {0} with {1}'.format(loc, [d['display_name'] for d in data]))
         polys += get_polys_from_osm(data)
 
@@ -125,7 +126,7 @@ def get_country_polygons(country):
         A list of polygons.
     """
     logger.info(u'Searching poly for country: {0}'.format(country))
-    data = requests.get(u'https://nominatim.openstreetmap.org/search/{0}?format=json&limit=1&polygon_geojson=1'.format(country)).json()
+    data = requests.get(u'https://nominatim.openstreetmap.org/search/{0}?format=json&limit=1&polygon_geojson=1'.format(urllib.quote_plus(country))).json()
     return get_polys_from_osm(data, limit=1)
 
 

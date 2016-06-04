@@ -1,7 +1,13 @@
 {% extends "home.html" %}
 {% block map %}
-<div id="tweet-info">
-</div>
+<p id="tweet-info">
+  {% for tweet in polys %}
+    <b>Tweet {{ tweet[1]['id'] }}: </b>
+    <span class="color-sample {{ tweet[1]['id'] }}"></span><br/>
+    {{ tweet[1]['text']|safe }}<br/>
+  {% endfor %}
+</p>
+
 <div id="map"></div>
   <script>
       function center(points, map){
@@ -26,7 +32,7 @@
         {% for tweet in polys %}
           var points_poly = []
           var color = '#'+('00000'+(Math.random()*(1<<24)|0).toString(16)).slice(-6)
-          $('#tweet-info').append('<b>Tweet {{ tweet[1]['id'] }}: </b><span class="color-sample {{ tweet[1]['id'] }}" style="background-color:' + color + ';"></span><br/>{{ tweet[1]['text'] }}<br/>')
+          $('#tweet-info .{{ tweet[1]['id'] }}').css('background-color', color);
 
           {% for poly in tweet[0] %}
             var polyCoords = [

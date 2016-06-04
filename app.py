@@ -16,7 +16,7 @@ def home():
         tweet_ids = request.form['tweetId'].split(',')
         polys = []
         for tweet_id in tweet_ids:
-            polys.append((determinate_tweet_location(tweet_id), tweet_id))
+            polys.append(determinate_tweet_location(tweet_id))
         return render_template('map.html', polys=polys, maps_key=os.environ['GOOGLE_MAPS_KEY'])
     return render_template('home.html')
 

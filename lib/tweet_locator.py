@@ -289,4 +289,4 @@ def determinate_tweet_location(tweet_id):
             polys.append(Polygon(add_z(p, 1), origin='language', exclude_with='language'))
 
     polys_agg = accumulate_polys(polys)
-    return get_max_poly(polys_agg)
+    return (get_max_poly(polys_agg), tweet)

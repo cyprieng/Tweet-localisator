@@ -26,7 +26,7 @@
         {% for tweet in polys %}
           var points_poly = []
           var color = '#'+('00000'+(Math.random()*(1<<24)|0).toString(16)).slice(-6)
-          $('#tweet-info').append('Tweet {{ tweet[1] }}: <span class="color-sample {{ tweet[1] }}" style="background-color:' + color + ';"></span><br/>')
+          $('#tweet-info').append('<b>Tweet {{ tweet[1]['id'] }}: </b><span class="color-sample {{ tweet[1] }}" style="background-color:' + color + ';"></span><br/>{{ tweet[1]['text'] }}<br/>')
 
           {% for poly in tweet[0] %}
             var polyCoords = [
@@ -50,7 +50,7 @@
             poly.setMap(map);
           {% endfor %}
 
-          $('#tweet-info .{{ tweet[1] }}').click(center.bind($('#tweet-info .{{ tweet[1] }}'), points_poly, map));
+          $('#tweet-info .{{ tweet[1]['id'] }}').click(center.bind($('#tweet-info .{{ tweet[1]['id'] }}'), points_poly, map));
         {% endfor %}
 
         center(points, map)

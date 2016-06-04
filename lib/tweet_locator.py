@@ -2,14 +2,12 @@ import csv
 import logging
 import math
 from multiprocessing.pool import ThreadPool
-import re
 import requests
 import shapefile
-import string
 
 from langid.langid import LanguageIdentifier, model
-from nltk.tag import pos_tag
-from shapely.geometry import Point, Polygon
+from shapely.geometry import Point
+from shapely.geometry import Polygon as ShpPolygon
 
 from twitter_custom import TwitterCustom
 
@@ -18,7 +16,14 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def get_polys_from_osm(osm_data):
+class Polygon(object):
+    def __init__(self, points, origin=None, exclude_with=None):
+        self.points = points
+        self.origin = origin
+        self.exclude_with = exclude_with
+
+
+def get_polys_from_osm(osm_data, limit=None):
     """Get polygons from Open Street Map data.
 
     Args:
@@ -28,13 +33,16 @@ def get_polys_from_osm(osm_data):
         List of polygons
     """
     polys = []
-    if osm_data and 'polygon' in osm_data[0]['geojson']['type'].lower():
-        for p in osm_data[0]['geojson']['coordinates']:
-            if isinstance(p[0][0], list):
-                for p2 in p:
-                    polys.append([[float(point[0]), float(point[1]), float(osm_data[0]['importance'])] for point in p2])
-            else:
-                polys.append([[float(point[0]), float(point[1]), float(osm_data[0]['importance'])] for point in p])
+    counter = 1
+    for result in osm_data:
+        if (limit is None or limit >= counter) and 'polygon' in result['geojson']['type'].lower():
+            counter += 1
+            for p in result['geojson']['coordinates']:
+                if isinstance(p[0][0], list):
+                    for p2 in p:
+                        polys.append([[float(point[0]), float(point[1]), float(osm_data[0]['importance'])] for point in p2])
+                else:
+                    polys.append([[float(point[0]), float(point[1]), float(osm_data[0]['importance'])] for point in p])
     return polys
 
 
@@ -47,14 +55,7 @@ def get_geoname_area(locations):
     Returns:
         A list of polygons
     """
-    # Filter locations (more than 3 letters) and remove punctuation
-    exclude = set(string.punctuation)
-    locations_2 = [''.join(ch for ch in l if ch not in exclude) for l in locations]
-    locations = [l for l in locations_2 if len(l) > 3]
-
-    # Get only proper nouns
-    tagged_sent = pos_tag(locations)
-    locations = [word for word,pos in tagged_sent if pos == 'NNP']
+    locations = [loc.replace('#', '') for loc in locations if loc.replace('#', '')[0].isupper()]
 
     logger.info(u'Searching polys for {0}'.format(locations))
 
@@ -125,7 +126,7 @@ def get_country_polygons(country):
     """
     logger.info(u'Searching poly for country: {0}'.format(country))
     data = requests.get(u'https://nominatim.openstreetmap.org/search/{0}?format=json&limit=1&polygon_geojson=1'.format(country)).json()
-    return get_polys_from_osm(data)
+    return get_polys_from_osm(data, limit=1)
 
 
 def get_polys_from_language(text):
@@ -182,10 +183,10 @@ def accumulate_polys(polygons):
     poly_box = []
     for poly in polygons:
         poly_box.append({
-            'max_x': max([point[0] for point in poly]),
-            'min_x': min([point[0] for point in poly]),
-            'max_y': max([point[1] for point in poly]),
-            'min_y': min([point[1] for point in poly])
+            'max_x': max([point[0] for point in poly.points]),
+            'min_x': min([point[0] for point in poly.points]),
+            'max_y': max([point[1] for point in poly.points]),
+            'min_y': min([point[1] for point in poly.points])
         })
 
     poly_to_check = []
@@ -194,14 +195,14 @@ def accumulate_polys(polygons):
         logger.info(u'Checking intersecting poly with poly: {0}/{1}'.format(i, len(polygons)))
         poly_to_check_temp = []
         for j in range(0, len(polygons)):
-            if poly != polygons[j] and (not ((poly_box[i]['min_x'] > poly_box[j]['max_x']) or (poly_box[j]['min_x'] > poly_box[i]['max_x']))) and (not ((poly_box[i]['min_y'] > poly_box[j]['max_y']) or (poly_box[j]['min_y'] > poly_box[i]['max_y']))):
+            if not (poly.exclude_with is not None and poly.exclude_with == polygons[j].origin) and poly != polygons[j] and (not ((poly_box[i]['min_x'] > poly_box[j]['max_x']) or (poly_box[j]['min_x'] > poly_box[i]['max_x']))) and (not ((poly_box[i]['min_y'] > poly_box[j]['max_y']) or (poly_box[j]['min_y'] > poly_box[i]['max_y']))):
                 poly_to_check_temp.append(j)
         poly_to_check.append(poly_to_check_temp)
         i += 1
 
     # Reduce poly precision
     for i in range(0, len(polygons)):
-        polygons[i] = [p for j, p in enumerate(polygons[i]) if j % math.ceil(float(len(polygons[i])) / 100.) == 0]
+        polygons[i].points = [p for j, p in enumerate(polygons[i].points) if j % math.ceil(float(len(polygons[i].points)) / 100.) == 0]
 
     index = 0
     for poly in polygons:
@@ -209,18 +210,18 @@ def accumulate_polys(polygons):
         logger.info(u'Accumulate poly: {0} with {1} polys'.format(index, len(poly_to_check[index])))
 
         if poly_to_check[index]:
-            for point in poly:
+            for point in poly.points:
                 z_temp = point[2]
 
                 # Cumulate z for intersecting poly
                 for i in poly_to_check[index]:
-                    if Point(point[0], point[1]).within(Polygon(polygons[i])):
-                        z_temp += polygons[i][0][2]
+                    if not (poly.exclude_with is not None and poly.exclude_with == polygons[i].origin) and Point(point[0], point[1]).within(ShpPolygon(polygons[i].points)):
+                        z_temp += polygons[i].points[0][2]
 
                 temp_poly.append([point[0], point[1], z_temp])
             poly_agg.append(temp_poly)
         else:
-            poly_agg.append(poly)
+            poly_agg.append(poly.points)
 
         index += 1
 
@@ -266,24 +267,24 @@ def determinate_tweet_location(tweet_id):
     poly = get_geoname_area(tweet['text'].split())
     if poly:
         for p in poly:
-            polys.append(add_z(p, 3))
+            polys.append(Polygon(add_z(p, 3), origin='geoname in tweet'))
 
     # Get area by timezone
     p = get_time_zone_area(tweet['user']['time_zone'])
     if p:
-        polys.append(add_z(p, 1))
+        polys.append(Polygon(add_z(p, 1), origin='timezone'))
 
     # Get area by user localisation in profile
     poly = get_geoname_area(tweet['user']['location'].split())
     if poly:
         for p in poly:
-            polys.append(add_z(p, 3))
+            polys.append(Polygon(add_z(p, 3), origin='profile location'))
 
     # Get area by language
     poly = get_polys_from_language(tweet['text'] + tweet['user']['description'])
     if poly:
         for p in poly:
-            polys.append(add_z(p, 1))
+            polys.append(Polygon(add_z(p, 1), origin='language', exclude_with='language'))
 
     polys_agg = accumulate_polys(polys)
     return get_max_poly(polys_agg)

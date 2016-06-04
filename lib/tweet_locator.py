@@ -265,25 +265,31 @@ def determinate_tweet_location(tweet_id):
     tweet = t.get_tweet(tweet_id)
     polys = []
 
+    pool = ThreadPool(processes=4)
+    poly_text = pool.apply_async(get_geoname_area, (tweet['text'].split(), ))
+    poly_tz = pool.apply_async(get_time_zone_area, (tweet['user']['time_zone'], ))
+    poly_location = pool.apply_async(get_geoname_area, (tweet['user']['location'].split(), ))
+    poly_language = pool.apply_async(get_polys_from_language, (tweet['text'] + tweet['user']['description'], ))
+
     # Get area by geoname in tweet
-    poly = get_geoname_area(tweet['text'].split())
+    poly = poly_text.get()
     if poly:
         for p in poly:
             polys.append(Polygon(add_z(p, 3), origin='geoname in tweet'))
 
     # Get area by timezone
-    p = get_time_zone_area(tweet['user']['time_zone'])
-    if p:
+    poly = poly_tz.get()
+    if poly:
         polys.append(Polygon(add_z(p, 1), origin='timezone'))
 
     # Get area by user localisation in profile
-    poly = get_geoname_area(tweet['user']['location'].split())
+    poly = poly_location.get()
     if poly:
         for p in poly:
             polys.append(Polygon(add_z(p, 3), origin='profile location'))
 
     # Get area by language
-    poly = get_polys_from_language(tweet['text'] + tweet['user']['description'])
+    poly = poly_language.get()
     if poly:
         for p in poly:
             polys.append(Polygon(add_z(p, 1), origin='language', exclude_with='language'))

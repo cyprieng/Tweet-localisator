@@ -238,15 +238,17 @@ def get_max_poly(polys):
         A list of polygons with the highter z.
     """
     max_poly = []
-    z_max = max([max([point[2] for point in poly]) for poly in polys])
-    logger.info(u'Maximum z: {0}'.format(z_max))
-    for poly in polys:
-        max_poly_temp = []
-        for point in poly:
-            if point[2] == z_max:
-                max_poly_temp.append(point)
-        if max_poly_temp:
-            max_poly.append(max_poly_temp)
+
+    if polys:
+        z_max = max([max([point[2] for point in poly]) for poly in polys])
+        logger.info(u'Maximum z: {0}'.format(z_max))
+        for poly in polys:
+            max_poly_temp = []
+            for point in poly:
+                if point[2] == z_max:
+                    max_poly_temp.append(point)
+            if max_poly_temp:
+                max_poly.append(max_poly_temp)
     return max_poly
 
 

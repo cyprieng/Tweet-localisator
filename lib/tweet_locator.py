@@ -247,7 +247,7 @@ def get_max_poly(polys):
             max_poly_temp = []
             for point in poly:
                 if point[2] == z_max:
-                    max_poly_temp.append(point)
+                    max_poly_temp.append([point[0], point[1]])
             if max_poly_temp:
                 max_poly.append(max_poly_temp)
     return max_poly
@@ -281,7 +281,7 @@ def determinate_tweet_location(tweet_id):
     # Get area by timezone
     poly = poly_tz.get()
     if poly:
-        polys.append(Polygon(add_z(p, 1), origin='timezone'))
+        polys.append(Polygon(add_z(poly, 1), origin='timezone'))
 
     # Get area by user localisation in profile
     poly = poly_location.get()

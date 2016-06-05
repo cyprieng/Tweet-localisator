@@ -30,24 +30,19 @@ html, body {
   height: 100%;
 }
 
-.jumbotron{
-  border-radius: 6px;
-  padding-left: 60px;
-  padding-right: 60px;
-  margin-top: 20px;
-}
-
 #map{
-  height: 500px;
+  height: 100%;
   width: 100%;
-  margin-top: 30px;
-  margin-bottom: 30px;
   position: absolute;
   left: 0;
 }
 
 #tweet-info{
-  margin-top: 20px;
+  position: absolute;
+  z-index: 999999;
+  top: 75px;
+  left: 10px;
+  color: white;
 }
 
 .color-sample{
@@ -55,4 +50,15 @@ html, body {
   height: 10px;
   width: 20px;
   cursor: pointer;
+}
+
+form{
+  position: absolute;
+  z-index: 999999;
+  top: 10px;
+  left: 120px;
+}
+
+#tweetId{
+  width: 400px;
 }

@@ -21,8 +21,8 @@
 
       function initMap() {
         var map = new google.maps.Map(document.getElementById('map'), {
-          zoom: 5,
-          center: {lat: 24.886, lng: -70.268},
+          zoom: 3,
+          center: {lat: 24., lng: 56.},
           mapTypeId: google.maps.MapTypeId.TERRAIN
         });
 
@@ -231,7 +231,8 @@
         map.mapTypes.set('map_style', styledMap);
         map.setMapTypeId('map_style');
 
-        center(points, map)
+        if(points.length > 0)
+          center(points, map)
       }
   </script>
 

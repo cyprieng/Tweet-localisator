@@ -13,13 +13,16 @@ app = Flask(__name__)
 @app.route('/', methods=['GET', 'POST'])
 def home():
     """Return the home page or map if tweet_id is send"""
-    if request.form.get('tweetId'):
-        tweet_ids = request.form['tweetId'].split(',')
-        polys = []
-        for tweet_id in tweet_ids:
-            polys.append(determinate_tweet_location(tweet_id))
-        return render_template('map.html', polys=polys, maps_key=os.environ['GOOGLE_MAPS_KEY'])
-    return render_template('home.html')
+    tweet_ids = request.form.get('tweetId')
+    if tweet_ids:
+        tweet_ids = tweet_ids.split(',')
+    else:
+        tweet_ids = []
+
+    polys = []
+    for tweet_id in tweet_ids:
+        polys.append(determinate_tweet_location(tweet_id))
+    return render_template('map.html', polys=polys, maps_key=os.environ['GOOGLE_MAPS_KEY'])
 
 
 @app.route('/api', methods=['GET'])

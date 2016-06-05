@@ -63,7 +63,7 @@ def get_geoname_area(locations):
     polys = []
 
     for loc in locations:
-        data = requests.get(u'https://nominatim.openstreetmap.org/search/{0}?format=json&limit=10&polygon_geojson=1&addressdetails=1'.format(urllib.quote_plus(loc))).json()
+        data = requests.get(u'https://nominatim.openstreetmap.org/search/{0}?format=json&limit=10&polygon_geojson=1&addressdetails=1'.format(urllib.quote_plus(loc.encode('utf8')))).json()
         logger.info(u'Matched {0} with {1}'.format(loc, [d['display_name'] for d in data]))
         polys += get_polys_from_osm(data)
 
@@ -126,7 +126,7 @@ def get_country_polygons(country):
         A list of polygons.
     """
     logger.info(u'Searching poly for country: {0}'.format(country))
-    data = requests.get(u'https://nominatim.openstreetmap.org/search/{0}?format=json&limit=1&polygon_geojson=1'.format(urllib.quote_plus(country))).json()
+    data = requests.get(u'https://nominatim.openstreetmap.org/search/{0}?format=json&limit=1&polygon_geojson=1'.format(urllib.quote_plus(country.encode('utf8')))).json()
     return get_polys_from_osm(data, limit=1)
 
 

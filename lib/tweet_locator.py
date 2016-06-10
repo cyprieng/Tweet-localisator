@@ -56,7 +56,7 @@ def get_geoname_area(locations):
     Returns:
         A list of polygons
     """
-    locations = [loc.replace('#', '').replace('?', '') for loc in locations if loc.replace('#', '')[0].isupper()]
+    locations = [loc.replace('#', '').replace('?', '') for loc in locations if loc.replace('#', '')[0].isupper() and len(loc) > 3]
 
     logger.info(u'Searching polys for {0}'.format(locations))
 
@@ -193,7 +193,6 @@ def accumulate_polys(polygons):
     poly_to_check = []
     i = 0
     for poly in polygons:
-        logger.info(u'Checking intersecting poly with poly: {0}/{1}'.format(i, len(polygons)))
         poly_to_check_temp = []
         for j in range(0, len(polygons)):
             if not (poly.exclude_with is not None and poly.exclude_with == polygons[j].origin) and poly != polygons[j] and (not ((poly_box[i]['min_x'] > poly_box[j]['max_x']) or (poly_box[j]['min_x'] > poly_box[i]['max_x']))) and (not ((poly_box[i]['min_y'] > poly_box[j]['max_y']) or (poly_box[j]['min_y'] > poly_box[i]['max_y']))):
@@ -253,7 +252,7 @@ def get_max_poly(polys):
     return max_poly
 
 
-def determinate_tweet_location(tweet_id):
+def determinate_tweet_location(tweet_id, ignore_previous=False):
     """Determinate the most probable location of the tweet with the given id.
 
     Args:
@@ -276,18 +275,18 @@ def determinate_tweet_location(tweet_id):
     poly = poly_text.get()
     if poly:
         for p in poly:
-            polys.append(Polygon(add_z(p, 3), origin='geoname in tweet'))
+            polys.append(Polygon(add_z(p, 5), origin='geoname in tweet'))
 
     # Get area by timezone
     poly = poly_tz.get()
     if poly:
-        polys.append(Polygon(add_z(poly, 1), origin='timezone'))
+        polys.append(Polygon(add_z(poly, 2), origin='timezone', exclude_with='timezone'))
 
     # Get area by user localisation in profile
     poly = poly_location.get()
     if poly:
         for p in poly:
-            polys.append(Polygon(add_z(p, 3), origin='profile location'))
+            polys.append(Polygon(add_z(p, 4), origin='profile location'))
 
     # Get area by language
     poly = poly_language.get()
@@ -295,5 +294,15 @@ def determinate_tweet_location(tweet_id):
         for p in poly:
             polys.append(Polygon(add_z(p, 1), origin='language', exclude_with='language'))
 
+    # Geolocalization
+    if tweet['place']:
+        polys += [Polygon(add_z(p, 20), origin='tweet place') for p in tweet['place']['bounding_box']['coordinates']]
+
+    # Get location of previous tweet
+    if not ignore_previous:
+        previous_tweet = t.return_previous_tweet(tweet)
+        polys_previous = determinate_tweet_location(previous_tweet['id'], ignore_previous=True)[0]
+        polys += [Polygon(add_z(p, 3), origin='previous tweet') for p in polys_previous]
+
     polys_agg = accumulate_polys(polys)
-    return (get_max_poly(polys_agg), tweet)
+    return ([p for p in get_max_poly(polys_agg) if len(p) > 2], tweet)

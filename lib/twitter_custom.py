@@ -27,3 +27,11 @@ class TwitterCustom(object):
             Dict representing the tweet
         """
         return self.api.statuses.show(_id=id)
+
+    def return_previous_tweet(self, tweet):
+        """Get the tweet posted before the given one.
+
+        Args:
+            tweet: tweet object.
+        """
+        return self.api.statuses.user_timeline(user_id=tweet['user']['id'], max_id=tweet['id'])[1]

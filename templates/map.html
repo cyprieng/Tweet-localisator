@@ -2,7 +2,7 @@
 {% block map %}
 <p id="tweet-info">
   {% for tweet in polys %}
-    <b>Tweet {{ tweet[1]['id'] }}: </b>
+    <b>Tweet {{ tweet[1]['id'] }} (trust score: {{tweet[2]}}/15): </b>
     <span class="color-sample {{ tweet[1]['id'] }}"></span><br/>
     {{ tweet[1]['text']|safe }}<br/>
   {% endfor %}

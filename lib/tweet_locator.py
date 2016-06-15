@@ -270,7 +270,7 @@ def get_max_poly(polys):
                     max_poly_temp.append([point[0], point[1]])
             if max_poly_temp:
                 max_poly.append(max_poly_temp)
-    return max_poly
+    return (max_poly, z_max)
 
 
 def determinate_tweet_location(tweet_id, ignore_previous=False):
@@ -336,4 +336,5 @@ def determinate_tweet_location(tweet_id, ignore_previous=False):
         polys += [Polygon(add_z(p, 3), origin='previous tweet') for p in polys_previous]
 
     polys_agg = accumulate_polys(polys)
-    return ([p for p in get_max_poly(polys_agg) if len(p) > 2], tweet)
+    final_poly, z_max = get_max_poly(polys_agg)
+    return ([p for p in final_poly if len(p) > 2], tweet, round(z_max, 2))

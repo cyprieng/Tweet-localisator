@@ -62,3 +62,7 @@ form{
 #tweetId{
   width: 400px;
 }
+
+#optional-parameters input{
+  width: 50px;
+}

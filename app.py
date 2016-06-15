@@ -19,9 +19,19 @@ def home():
     else:
         tweet_ids = []
 
+    weight_text = int(request.form.get('weightText'))
+    weight_timezone = int(request.form.get('weightTimezone'))
+    weight_location_field = int(request.form.get('weightLocationField'))
+    weight_language = int(request.form.get('weightLanguage'))
+    weight_url = int(request.form.get('weightURL'))
+    weight_geolocalization = int(request.form.get('weightGeolocalization'))
+
     polys = []
     for tweet_id in tweet_ids:
-        polys.append(determinate_tweet_location(tweet_id))
+        polys.append(determinate_tweet_location(tweet_id, weight_text=weight_text, weight_timezone=weight_timezone,
+                                                weight_location_field=weight_location_field,
+                                                weight_language=weight_language, weight_url=weight_url,
+                                                weight_geolocalization=weight_geolocalization))
     return render_template('map.html', polys=polys, maps_key=os.environ['GOOGLE_MAPS_KEY'])
 
 

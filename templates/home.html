@@ -4,6 +4,27 @@
 <form method="post" action="./" class="form-inline">
   <div class="form-group">
     <input type="text" class="form-control" id="tweetId" name="tweetId" placeholder="Tweet IDs (Separate by a comma to locate many tweets)">
+    <button type="button" class="btn btn-default" data-toggle="modal" data-target="#optional-parameters"><span class="glyphicon glyphicon-cog" aria-hidden="true"></span></button>
+  </div>
+
+  <div id="optional-parameters" class="modal fade" tabindex="-1" role="dialog">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-body">
+          <div class="form-group">
+            Weight for geonames in text: <input type="number" class="form-control" id="weightText" name="weightText" value="5" min="0"><br/>
+            Weight for timezone: <input type="number" class="form-control" id="weightTimezone" name="weightTimezone" value="2" min="0"><br/>
+            Weight for user's location field: <input type="number" class="form-control" id="weightLocationField" name="weightLocationField" value="4" min="0"><br/>
+            Weight for tweet language: <input type="number" class="form-control" id="weightLanguage" name="weightLanguage" value="1" min="0"><br/>
+            Weight for URL in user's profile: <input type="number" class="form-control" id="weightURL" name="weightURL" value="1" min="0"><br/>
+            Weight for tweet geolocalization: <input type="number" class="form-control" id="weightGeolocalization" name="weightGeolocalization" value="20" min="0">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
   </div>
   <button type="submit" class="btn btn-default">Localize</button>
 </form>

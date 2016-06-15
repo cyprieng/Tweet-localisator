@@ -273,7 +273,8 @@ def get_max_poly(polys):
     return (max_poly, z_max)
 
 
-def determinate_tweet_location(tweet_id, ignore_previous=False):
+def determinate_tweet_location(tweet_id, weight_text=5, weight_timezone=2, weight_location_field=4,
+                               weight_language=1, weight_url=1, weight_geolocalization=20, ignore_previous=False):
     """Determinate the most probable location of the tweet with the given id.
 
     Args:
@@ -287,52 +288,65 @@ def determinate_tweet_location(tweet_id, ignore_previous=False):
     polys = []
 
     pool = ThreadPool(processes=4)
-    poly_text = pool.apply_async(get_geoname_area, (tweet['text'].split(), ))
-    poly_tz = pool.apply_async(get_time_zone_area, (tweet['user']['time_zone'], ))
-    poly_location = pool.apply_async(get_geoname_area, (tweet['user']['location'].split(), ))
-    poly_language = pool.apply_async(get_polys_from_language, (tweet['text'] + tweet['user']['description'], ))
 
-    if 'url' in tweet['user']['entities']:
+    if weight_text > 0:
+        poly_text = pool.apply_async(get_geoname_area, (tweet['text'].split(), ))
+    if weight_timezone > 0:
+        poly_tz = pool.apply_async(get_time_zone_area, (tweet['user']['time_zone'], ))
+    if weight_location_field > 0:
+        poly_location = pool.apply_async(get_geoname_area, (tweet['user']['location'].split(), ))
+    if weight_language > 0:
+        poly_language = pool.apply_async(get_polys_from_language, (tweet['text'] + tweet['user']['description'], ))
+
+    if 'url' in tweet['user']['entities'] and weight_url > 0:
         poly_tld = pool.apply_async(get_polys_from_tld, (tweet['user']['entities']['url']['urls'][0]['expanded_url'], ))
 
     # Get area by geoname in tweet
-    poly = poly_text.get()
-    if poly:
-        for p in poly:
-            polys.append(Polygon(add_z(p, 5), origin='geoname in tweet'))
+    if weight_text > 0:
+        poly = poly_text.get()
+        if poly:
+            for p in poly:
+                polys.append(Polygon(add_z(p, weight_text), origin='geoname in tweet'))
 
     # Get area by timezone
-    poly = poly_tz.get()
-    if poly:
-        polys.append(Polygon(add_z(poly, 2), origin='timezone', exclude_with='timezone'))
+    if weight_timezone > 0:
+        poly = poly_tz.get()
+        if poly:
+            polys.append(Polygon(add_z(poly, weight_timezone), origin='timezone', exclude_with='timezone'))
 
     # Get area by user localisation in profile
-    poly = poly_location.get()
-    if poly:
-        for p in poly:
-            polys.append(Polygon(add_z(p, 4), origin='profile location'))
+    if weight_location_field > 0:
+        poly = poly_location.get()
+        if poly:
+            for p in poly:
+                polys.append(Polygon(add_z(p, weight_location_field), origin='profile location'))
 
     # Get area by language
-    poly = poly_language.get()
-    if poly:
-        for p in poly:
-            polys.append(Polygon(add_z(p, 1), origin='language', exclude_with='language'))
+    if weight_language > 0:
+        poly = poly_language.get()
+        if poly:
+            for p in poly:
+                polys.append(Polygon(add_z(p, weight_language), origin='language', exclude_with='language'))
 
-    # Get area by language
-    if 'url' in tweet['user']['entities']:
+    # Get area by TLD
+    if 'url' in tweet['user']['entities'] and weight_url > 0:
         poly = poly_tld.get()
         if poly:
             for p in poly:
-                polys.append(Polygon(add_z(p, 1), origin='TLD'))
+                polys.append(Polygon(add_z(p, weight_url), origin='TLD'))
 
     # Geolocalization
-    if tweet['place']:
-        polys += [Polygon(add_z(p, 20), origin='tweet place') for p in tweet['place']['bounding_box']['coordinates']]
+    if tweet['place'] and weight_geolocalization > 0:
+        polys += [Polygon(add_z(p, weight_geolocalization), origin='tweet place') for p in tweet['place']['bounding_box']['coordinates']]
 
     # Get location of previous tweet
     if not ignore_previous:
         previous_tweet = t.return_previous_tweet(tweet)
-        polys_previous = determinate_tweet_location(previous_tweet['id'], ignore_previous=True)[0]
+        polys_previous = determinate_tweet_location(previous_tweet['id'], weight_text=weight_text,
+                                                    weight_timezone=weight_timezone,
+                                                    weight_location_field=weight_location_field,
+                                                    weight_language=weight_language, weight_url=weight_url,
+                                                    weight_geolocalization=weight_geolocalization, ignore_previous=True)[0]
         polys += [Polygon(add_z(p, 3), origin='previous tweet') for p in polys_previous]
 
     polys_agg = accumulate_polys(polys)

@@ -1,4 +1,5 @@
 import csv
+import json
 import logging
 import math
 from multiprocessing.pool import ThreadPool
@@ -151,6 +152,26 @@ def get_polys_from_language(text):
     return polys
 
 
+def get_polys_from_tld(url):
+    """Get a list of polys from the URL TLD.
+
+    Args:
+        url: url to analyse.
+
+    Returns:
+        A list of polygons.
+    """
+    tld = '.' + url.split('.')[-1]
+
+    polys = []
+    with open('./data/countries.json') as f:
+        data = json.loads(f.read())
+        for country in data:
+            if tld in country['tld']:
+                polys += get_country_polygons(country['name']['common'])
+    return polys
+
+
 def add_z(poly, z):
     """Add a dimension in the given poly with the given value.
 
@@ -271,6 +292,9 @@ def determinate_tweet_location(tweet_id, ignore_previous=False):
     poly_location = pool.apply_async(get_geoname_area, (tweet['user']['location'].split(), ))
     poly_language = pool.apply_async(get_polys_from_language, (tweet['text'] + tweet['user']['description'], ))
 
+    if 'url' in tweet['user']['entities']:
+        poly_tld = pool.apply_async(get_polys_from_tld, (tweet['user']['entities']['url']['urls'][0]['expanded_url'], ))
+
     # Get area by geoname in tweet
     poly = poly_text.get()
     if poly:
@@ -293,6 +317,13 @@ def determinate_tweet_location(tweet_id, ignore_previous=False):
     if poly:
         for p in poly:
             polys.append(Polygon(add_z(p, 1), origin='language', exclude_with='language'))
+
+    # Get area by language
+    if 'url' in tweet['user']['entities']:
+        poly = poly_tld.get()
+        if poly:
+            for p in poly:
+                polys.append(Polygon(add_z(p, 1), origin='TLD'))
 
     # Geolocalization
     if tweet['place']:

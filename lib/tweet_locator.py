@@ -274,7 +274,7 @@ def get_max_poly(polys):
 
 
 def determinate_tweet_location(tweet_id, weight_text=5, weight_timezone=2, weight_location_field=4,
-                               weight_language=1, weight_url=1, weight_geolocalization=20, ignore_previous=False):
+                               weight_language=1, weight_url=1, weight_geolocalization=20, aggregate=True, ignore_previous=False):
     """Determinate the most probable location of the tweet with the given id.
 
     Args:
@@ -283,6 +283,13 @@ def determinate_tweet_location(tweet_id, weight_text=5, weight_timezone=2, weigh
     Returns:
         A polygon representing the most probable location.
     """
+    weight_text = int(weight_text) if weight_text is not None else 5
+    weight_timezone = int(weight_timezone) if weight_timezone is not None else 2
+    weight_location_field = int(weight_location_field) if weight_location_field is not None else 4
+    weight_language = int(weight_language) if weight_language is not None else 1
+    weight_url = int(weight_url) if weight_url is not None else 1
+    weight_geolocalization = int(weight_geolocalization) if weight_geolocalization is not None else 20
+
     t = TwitterCustom()
     tweet = t.get_tweet(tweet_id)
     polys = []
@@ -349,6 +356,10 @@ def determinate_tweet_location(tweet_id, weight_text=5, weight_timezone=2, weigh
                                                     weight_geolocalization=weight_geolocalization, ignore_previous=True)[0]
         polys += [Polygon(add_z(p, 3), origin='previous tweet') for p in polys_previous]
 
-    polys_agg = accumulate_polys(polys)
-    final_poly, z_max = get_max_poly(polys_agg)
+    if aggregate:
+        polys_agg = accumulate_polys(polys)
+        final_poly, z_max = get_max_poly(polys_agg)
+    else:
+        final_poly = [p.points for p in polys]
+        z_max = 0.
     return ([p for p in final_poly if len(p) > 2], tweet, round(z_max, 2))

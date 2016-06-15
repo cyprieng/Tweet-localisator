@@ -63,6 +63,6 @@ form{
   width: 400px;
 }
 
-#optional-parameters input{
-  width: 50px;
+#optional-parameters input[type="number"]{
+  width: 70px;
 }
